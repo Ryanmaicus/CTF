@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini CTF — Single‑File, Static‑Host Ready</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #141834;
+      --ink: #e8ebff;
+      --sub: #aab3ff;
+      --accent: #7c9bff;
+      --ok: #48d17a;
+      --err: #ff6b6b;
+      --warn: #ffb454;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 80% -20%, #26306a33, transparent), var(--bg);
+      color: var(--ink); line-height:1.5;
+    }
+    header{
+      padding: 24px; border-bottom: 1px solid #2a2f55;
+      position: sticky; top:0; backdrop-filter: blur(8px); background: #0f1220cc;
+      z-index: 5;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+    h1{margin:0 0 8px; font-size: clamp(24px, 3vw, 34px)}
+    .muted{color: var(--sub)}
+    .grid{display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px}
+    .card{
+      background: linear-gradient(180deg, #161b3d, #111533 40%);
+      border:1px solid #2a2f55; border-radius:16px; padding:16px; box-shadow: 0 10px 30px #0006;
+      position: relative; overflow:hidden;
+    }
+    .tag{display:inline-block; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#cbd3ff; background:#2a2f55; padding:4px 8px; border-radius:999px;}
+    h3{margin:8px 0 8px}
+    .btn{
+      background: var(--accent); color: #0b0f25; border: none; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:700;
+      transition:.15s transform ease, .15s filter ease;
+    }
+    .btn:hover{transform: translateY(-1px); filter:brightness(1.05)}
+    .btn.secondary{background:#2a2f55;color:#e8ebff}
+    .btn.ghost{background:transparent; border:1px solid #2a2f55; color:var(--ink)}
+    input[type="text"], input[type="number"], textarea{
+      width:100%; background:#0f132d; color:var(--ink); border:1px solid #2a2f55; padding:10px 12px; border-radius:10px; outline:none;
+    }
+    .row{display:flex; gap:8px; align-items:center}
+    .row.wrap{flex-wrap:wrap}
+    .kpi{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin: 12px 0 0;
+    }
+    .pill{background:#0e1434; border:1px solid #2a2f55; border-radius:12px; padding:8px 12px; font-size:12px; color:#c9d1ff}
+    .success{color:var(--ok)}
+    .fail{color:var(--err)}
+    .warn{color:var(--warn)}
+    details{border-top:1px dashed #2a2f55; padding-top:8px; margin-top:8px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    footer{border-top:1px solid #2a2f55; margin-top:24px; padding:16px 0 48px; color:#cbd3ff}
+    .small{font-size:12px}
+    .score-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .chip{background:#1d2353; border:1px solid #2a2f55; color:#cbd3ff; border-radius:999px; padding:6px 10px; font-size:12px}
+    .hidden-flag{color:#111533; user-select:text}
+    code{background:#0f132d; border:1px solid #2a2f55; padding:2px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <!-- Warmup flag lives in the source to encourage View Source habits:
+       CTF{view_source_victory}
+  -->
+  <header>
+    <div class="wrap">
+      <h1>Mini CTF</h1>
+      <div class="muted">Single‑file, static‑host ready CTF you can deploy to GitHub Pages, Vercel, Netlify, etc.</div>
+      <div class="kpi">
+        <div class="pill">Total Challenges: <b id="k_total">0</b></div>
+        <div class="pill">Solved: <b id="k_solved">0</b></div>
+        <div class="pill">Score: <b id="k_score">0</b> pts</div>
+        <div class="pill">Time: <b id="k_time">00:00:00</b></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding:24px 0 16px">
+    <section class="card" id="intro">
+      <span class="tag">Read me</span>
+      <h3>How it works</h3>
+      <ol>
+        <li>Each card below is a challenge. Read the prompt, find the flag, then submit it in the field on the card.</li>
+        <li>Flag format: <code>CTF{like_this}</code> (case‑sensitive).</li>
+        <li>Scoring & solves save locally in your browser (no backend needed).</li>
+      </ol>
+      <details>
+        <summary>Admin notes (customize me)</summary>
+        <p class="muted small">Open this file and edit <code>CHALLENGES</code> array + <code>FLAG_HASHES</code> list in the script to add, remove, or update challenges/points. Hashes are SHA‑256 of the exact flag text. You can generate with browser DevTools: <code>crypto.subtle.digest('SHA-256', new TextEncoder().encode(flag))</code>. Or any tool.</p>
+      </details>
+      <div class="score-row" style="margin-top:8px">
+        <button class="btn" id="btn_reset">Reset Progress</button>
+        <button class="btn secondary" id="btn_export">Export Solves</button>
+        <button class="btn ghost" id="btn_import">Import Solves</button>
+        <input id="import_file" type="file" accept="application/json" style="display:none"/>
+      </div>
+    </section>
+
+    <section id="cards" class="grid" aria-live="polite"></section>
+
+    <footer>
+      <div class="wrap small">
+        Host anywhere that serves static files. Entire site is this one HTML file. ✨
+        <div style="margin-top:6px">Built‑in demo flags:
+          <span class="chip">View Source</span>
+          <span class="chip">JS Re (runtime)</span>
+          <span class="chip">Cookie Admin</span>
+          <span class="chip">Crypto Caesar</span>
+          <span class="chip">Forensics (not a photo)</span>
+          <span class="chip">Timing</span>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <template id="tpl_card">
+    <article class="card">
+      <div class="row wrap" style="justify-content:space-between; gap:12px">
+        <span class="tag cat">Category</span>
+        <span class="pill" data-points>100 pts</span>
+      </div>
+      <h3 data-title>Title</h3>
+      <div class="muted" data-body>Prompt</div>
+      <div data-extra style="margin:10px 0 0"></div>
+      <div style="margin-top:10px" class="row wrap">
+        <input type="text" placeholder="CTF{...}" data-input aria-label="Flag input" class="mono" />
+        <button class="btn" data-submit>Submit flag</button>
+        <button class="btn secondary" data-hint>Hint (‑10%)</button>
+        <span class="pill" data-status>Unsolved</span>
+      </div>
+      <details style="margin-top:8px">
+        <summary>Solution notes (for organizers)</summary>
+        <div class="small" data-notes></div>
+      </details>
+    </article>
+  </template>
+
+  <script>
+  // ------------------------------
+  // Config: define challenges here
+  // ------------------------------
+  // id must be unique string. points integer.
+  // Hints are optional. notes are only shown in the expandable organizer section.
+  const CHALLENGES = [
+    {
+      id: 'warmup_view_source',
+      category: 'web',
+      title: 'Warmup — View Source',
+      points: 50,
+      body: 'Find the hidden flag on this page. (Hint: web devs love to hide things where browsers look first.)',
+      hint: 'Check the HTML source of the page. Keyboard: Ctrl/Cmd+U.',
+      notes: 'The flag is in an HTML comment at the top of the <body>.',
+    },
+    {
+      id: 'js_runtime_peek',
+      category: 'rev',
+      title: 'Runtime Reading',
+      points: 150,
+      body: 'A secret appears only at runtime. Can you discover it without reading it in cleartext here?',
+      hint: 'Explore DevTools. Evaluate globals and functions. Pretty‑print sources.',
+      notes: 'A function on window returns a base64 string reversed; decode to get the flag.',
+      extra: (el) => {
+        // We expose an obfuscated function on window that yields the flag only if you call it or reverse it.
+        const b = 'fQ=='};
+    },
+    {
+      id: 'cookie_admin',
+      category: 'web',
+      title: 'Are you admin?',
+      points: 200,
+      body: 'The panel only trusts admins. Maybe a tasty snack can convince it. Make the site think you are an admin, then submit the resulting flag.',
+      hint: 'Look at document cookies. Can you set one?',
+      notes: 'Needs cookie name ctf_user=admin. When present, a flag appears in the card UI. Or set via DevTools: document.cookie = "ctf_user=admin; path=/"',
+      extra: (el) => {
+        const p = document.createElement('div');
+        p.className = 'small';
+        p.innerHTML = 'Admin panel status: <span id="admstat" class="pill">guest</span> — <button class="btn ghost" id="admcheck">Check</button>';
+        el.appendChild(p);
+      },
+    },
+    {
+      id: 'crypto_caesar',
+      category: 'crypto',
+      title: 'Caesar Salad (ROT13)',
+      points: 150,
+      body: 'Decrypt this with the classic ROT13: <code class="mono">PGS{P3@n@e_fu1fg_13}</code>',
+      hint: 'ROT13 maps A↔N, B↔O, C↔P, ... Apply to letters only.',
+      notes: 'ROT13 of PGS{P3@n@e_fu1fg_13} is CTF{C3@s@r_sh1ft_13}.',
+    },
+    {
+      id: 'forensics_not_a_photo',
+      category: 'forensics',
+      title: 'This is not a photo',
+      points: 200,
+      body: 'Download the provided file that claims to be a photo. Is it really? Tools like <code>file</code>, hex viewers, or even a text editor may help.',
+      hint: 'Trust but verify file types. Magic bytes tell truth.',
+      notes: 'The download is served with a .jpg name but is actually a text blob containing the flag.',
+      extra: (el) => {
+        const a = document.createElement('a');
+        a.download = 'photo.jpg';
+        const blob = new Blob(["This is not a real photo. Here is your flag: CTF{this_is_not_a_photo}"], {type:'image/jpeg'});
+        a.href = URL.createObjectURL(blob);
+        a.textContent = 'Download photo.jpg';
+        el.appendChild(a);
+      },
+    },
+    {
+      id: 'timing_is_hard',
+      category: 'misc',
+      title: 'Timing is hard',
+      points: 250,
+      body: 'Click start, then stop as close as possible to <b>5.000 seconds</b>. ±0.10s window.',
+      hint: 'Use a metronome in your head. Or… there are smarter ways in DevTools 😉',
+      notes: 'Accept if 4.900 ≤ elapsed ≤ 5.100s. Clever solvers may hook Date.now or call the checker directly.',
+      extra: (el) => {
+        const box = document.createElement('div');
+        box.className = 'row wrap';
+        const out = document.createElement('span');
+        out.className = 'pill';
+        out.textContent = '0.000s';
+        const start = document.createElement('button');
+        start.className='btn ghost'; start.textContent='Start';
+        const stop = document.createElement('button');
+        stop.className='btn ghost'; stop.textContent='Stop';
+        box.append(start, stop, out);
+        el.appendChild(box);
+        let t0=null, running=false, h;
+        start.onclick = ()=>{ if(running) return; running=true; t0=performance.now(); h=requestAnimationFrame(function tick(){out.textContent=((performance.now()-t0)/1000).toFixed(3)+'s'; h=requestAnimationFrame(tick);}); };
+        stop.onclick = ()=>{ if(!running) return; running=false; cancelAnimationFrame(h); const elapsed=(performance.now()-t0)/1000; out.textContent=elapsed.toFixed(3)+'s'; out.dataset.elapsed=String(elapsed); };
+      },
+    },
+  ];
+
+  // ------------------------------
+  // Flag store (SHA‑256 hex strings)
+  // Generate with: await sha256Hex('CTF{your_flag}') in console
+  // ------------------------------
+  const FLAG_HASHES = {
+    warmup_view_source: '1bcd1dc45f7b69946cd1b4a4585a66df19f373b9069f706aaf2fae67b8b90f7f', // CTF{view_source_victory}
+    js_runtime_peek:   'a8c9a037689f9878da3b681dc3fbecc97d916e5c72f9849f94ec8b6f98b14d2f', // CTF{runtime_reading_is_fun}
+    cookie_admin:      'd3f9f9a0b174b80f999bb24a73d7b0c2f3a9d7a3e37f8a7c4aee1ba7e5cfb4f1', // CTF{cookie_monster_admin}
+    crypto_caesar:     '8f76a6b19b55e97462d5fd3adf458c1ae3b1f5b2f5b83c6a9e9fa3c2a8f8b2a7', // CTF{C3@s@r_sh1ft_13}
+    forensics_not_a_photo: 'c2a2d28a5f6c9f0df6f877b9c2b2b8b3e1e3fc5a2d15d0f97f04b6e1f2a2d3c1', // CTF{this_is_not_a_photo}
+    timing_is_hard:    '0c4f5f1a8b9b9f3ad2d8c1f3f1a2b3c4d5e6f7a8091a2b3c4d5e6f7a8b9c0d1e', // CTF{great_timing}
+  };
+
+  // NOTE: The above hashes are placeholders for demo; below we also embed a live hasher.
+  // If a hash is wrong, no one can solve that challenge — so double‑check after edits!
+
+  // ------------------------------
+  // Utility: SHA‑256 hex + local state
+  // ------------------------------
+  async function sha256Hex(msg){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  const LSKEY = 'miniCTF_state_v1';
+  function loadState(){
+    try { return JSON.parse(localStorage.getItem(LSKEY)||'{}'); } catch { return {}; }
+  }
+  function saveState(s){ localStorage.setItem(LSKEY, JSON.stringify(s)); }
+
+  // ------------------------------
+  // Render cards
+  // ------------------------------
+  const $cards = document.getElementById('cards');
+  const tpl = document.getElementById('tpl_card');
+  const state = loadState();
+  if(!state.solves) state.solves={};
+  if(!state.score) state.score=0;
+  if(!state.startTs) state.startTs=Date.now();
+  saveState(state);
+
+  // Expose runtime‑only secret for the rev challenge (id: js_runtime_peek)
+  (function(){
+    const rev = 'fW51ZnNfZ25pZGFyX2VnbmVydF90cmludXJfZW1pdG5ydXQne0ZUR30='; // reverse(base64('CTF{runtime_reading_is_fun}'))
+    window.__getRuntimeSecret = ()=>atob(rev.split('').reverse().join(''));
+    // A tiny breadcrumb
+    Object.defineProperty(window, 'ctfHint', {value: 'Try window.__getRuntimeSecret()'});
+  })();
+
+  function readCookie(name){
+    return document.cookie.split(';').map(s=>s.trim()).find(s=>s.startsWith(name+'='))?.split('=')[1] || null;
+  }
+
+  function render(){
+    $cards.innerHTML = '';
+    for(const ch of CHALLENGES){
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('.cat').textContent = ch.category;
+      node.querySelector('[data-points]').textContent = ch.points + ' pts';
+      node.querySelector('[data-title]').textContent = ch.title;
+      node.querySelector('[data-body]').innerHTML = ch.body;
+      node.querySelector('[data-notes]').textContent = ch.notes || '(add organizer notes)';
+
+      const extraHost = node.querySelector('[data-extra]');
+      if (typeof ch.extra === 'function') ch.extra(extraHost);
+
+      const status = node.querySelector('[data-status]');
+      const input = node.querySelector('[data-input]');
+      const submit = node.querySelector('[data-submit]');
+      const hintBtn = node.querySelector('[data-hint]');
+
+      // Pre‑fill with solved state
+      if (state.solves[ch.id]){
+        status.textContent = 'Solved'; status.classList.add('success');
+      }
+
+      submit.addEventListener('click', async ()=>{
+        const flag = (input.value||'').trim();
+        if(!/^CTF\{.*\}$/.test(flag)){
+          status.textContent = 'Bad format'; status.classList.add('warn'); return;
+        }
+        const hex = await sha256Hex(flag);
+        const correct = (FLAG_HASHES[ch.id]||'').toLowerCase();
+        if (hex === correct){
+          if (!state.solves[ch.id]){
+            state.solves[ch.id] = { ts: Date.now(), flagLen: flag.length };
+            state.score += Math.round(ch.points * (state.solves[ch.id].hinted?0.9:1));
+            saveState(state);
+          }
+          status.textContent = 'Solved ✓'; status.classList.remove('fail','warn'); status.classList.add('success');
+          updateKpis();
+        } else {
+          status.textContent = 'Wrong'; status.classList.remove('success','warn'); status.classList.add('fail');
+        }
+      });
+
+      hintBtn.addEventListener('click', ()=>{
+        alert(ch.hint || 'No hint for this one.');
+        state.solves[ch.id] = state.solves[ch.id] || {};
+        state.solves[ch.id].hinted = true; saveState(state);
+      });
+
+      // Cookie challenge live check UI hookup
+      if (ch.id === 'cookie_admin'){
+        const admcheck = node.querySelector('#admcheck');
+        const admstat = node.querySelector('#admstat');
+        const update = ()=>{
+          const v = readCookie('ctf_user') || 'guest';
+          admstat.textContent = v;
+          if (v === 'admin'){
+            admstat.classList.add('success');
+            const f = document.createElement('div'); f.className='small';
+            f.innerHTML = '<b>Flag:</b> <span class="mono">CTF{cookie_monster_admin}</span>';
+            extraHost.appendChild(f);
+          }
+        };
+        admcheck.addEventListener('click', update);
+        update();
+      }
+
+      $cards.appendChild(node);
+    }
+    updateKpis();
+  }
+
+  function updateKpis(){
+    const total = CHALLENGES.length;
+    const solved = Object.keys(state.solves).filter(id=>state.solves[id]?.ts).length;
+    document.getElementById('k_total').textContent = total;
+    document.getElementById('k_solved').textContent = solved;
+    document.getElementById('k_score').textContent = state.score || 0;
+  }
+
+  // Timer
+  function fmt(sec){ const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60); return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':'); }
+  setInterval(()=>{
+    const elapsed = (Date.now() - (state.startTs||Date.now()))/1000; document.getElementById('k_time').textContent = fmt(elapsed);
+  }, 1000);
+
+  // Export / Import / Reset
+  document.getElementById('btn_reset').onclick = ()=>{
+    if(confirm('Reset local progress?')){ localStorage.removeItem(LSKEY); location.reload(); }
+  };
+  document.getElementById('btn_export').onclick = ()=>{
+    const data = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a = Object.assign(document.createElement('a'), {download:'miniCTF-progress.json', href: URL.createObjectURL(data)});
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+  document.getElementById('btn_import').onclick = ()=> document.getElementById('import_file').click();
+  document.getElementById('import_file').addEventListener('change', async (e)=>{
+    const f = e.target.files?.[0]; if(!f) return; const text = await f.text();
+    try{ const s = JSON.parse(text); if(s && typeof s==='object'){ localStorage.setItem(LSKEY, JSON.stringify(s)); alert('Imported. Reloading…'); location.reload(); } }
+    catch{ alert('Invalid file.'); }
+  });
+
+  render();
+
+  // ------------------------------
+  // Hash sanity self‑check (optional)
+  // ------------------------------
+  (async function selfCheck(){
+    const expected = {
+      warmup_view_source: 'CTF{view_source_victory}',
+      js_runtime_peek: 'CTF{runtime_reading_is_fun}',
+      cookie_admin: 'CTF{cookie_monster_admin}',
+      crypto_caesar: 'CTF{C3@s@r_sh1ft_13}',
+      forensics_not_a_photo: 'CTF{this_is_not_a_photo}',
+      timing_is_hard: 'CTF{great_timing}',
+    };
+    // If any mismatch, log a console warning so organizers catch it during setup.
+    for (const [id, flag] of Object.entries(expected)){
+      const h = await sha256Hex(flag);
+      if ((FLAG_HASHES[id]||'').toLowerCase() !== h){
+        console.warn('[CTF] Hash mismatch for', id, 'Expected:', h, 'Got:', FLAG_HASHES[id]);
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
