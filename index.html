@@ -166,12 +166,15 @@
       title: 'Runtime Reading',
       points: 150,
       body: 'A secret appears only at runtime. Can you discover it without reading it in cleartext here?',
-      hint: 'Explore DevTools. Evaluate globals and functions. Pretty‑print sources.',
-      notes: 'A function on window returns a base64 string reversed; decode to get the flag.',
+      hint: 'Explore DevTools. Evaluate globals and functions. Pretty-print sources.',
+      notes: 'Call window.__getRuntimeSecret() in the console to get the flag.',
       extra: (el) => {
-        // We expose an obfuscated function on window that yields the flag only if you call it or reverse it.
-        const b = 'fQ=='};
-    },
+        const note = document.createElement('div');
+        note.className = 'small';
+        note.textContent = 'Tip: Something is hidden on window...';
+        el.appendChild(note);
+      },
+
     {
       id: 'cookie_admin',
       category: 'web',
